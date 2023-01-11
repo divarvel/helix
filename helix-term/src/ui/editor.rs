@@ -434,10 +434,13 @@ impl EditorView {
         };
         let space = characters.space.to_string();
         let nbsp = characters.nbsp.to_string();
-        let newline = if whitespace.render.newline() != WhitespaceRenderValue::None {
-            characters.newline.to_string()
-        } else {
-            " ".to_string()
+        let (newline, trailing_newline) = match whitespace.render.newline() {
+            WhitespaceRenderValue::All => (
+                characters.newline.to_string(),
+                characters.newline.to_string(),
+            ),
+            WhitespaceRenderValue::Trailing => (" ".to_string(), characters.newline.to_string()),
+            _ => (" ".to_string(), " ".to_string()),
         };
         let indent_guide_char = config.indent_guides.character.to_string();
 
@@ -483,6 +486,9 @@ impl EditorView {
         // we render individual starting spaces.
         let mut was_whitespace = true;
 
+        // Used only for trailing highlighting, so that newline characters are only displayed
+        // at the end of (non-empty) lines with trailing whitespace.
+        let mut is_start = true;
         'outer: for event in highlights {
             match event {
                 HighlightEvent::HighlightStart(span) => {
@@ -528,12 +534,18 @@ impl EditorView {
                             || visual_x >= viewport.width as usize + offset.col;
 
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
+                            let actual_newline = if !is_start && was_whitespace {
+                                &trailing_newline
+                            } else {
+                                &newline
+                            };
+
                             if !out_of_bounds {
                                 // we still want to render an empty cell with the style
                                 surface.set_string(
                                     (viewport.x as usize + visual_x - offset.col) as u16,
                                     viewport.y + line,
-                                    &newline,
+                                    actual_newline,
                                     style.patch(whitespace_style),
                                 );
                             }
@@ -551,6 +563,7 @@ impl EditorView {
                             if line >= viewport.height {
                                 break 'outer;
                             }
+                            is_start = true;
                         } else {
                             let grapheme = Cow::from(grapheme);
                             let is_whitespace;
@@ -638,6 +651,7 @@ impl EditorView {
 
                             visual_x = visual_x.saturating_add(width);
                             was_whitespace = is_whitespace;
+                            is_start = false;
                         }
                     }
                 }
