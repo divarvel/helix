@@ -398,10 +398,33 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
     };
     let text = doc.text().slice(..);
     let line = doc.selection(view.id).primary().cursor_line(text);
-    dap_toggle_breakpoint_impl(cx, path, line);
+    dap_toggle_breakpoint_impl(cx, path, line, None);
 }
 
-pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: PathBuf, line: usize) {
+pub fn dap_toggle_breakpoint_at_cursor(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let path = match doc.path() {
+        Some(path) => path.clone(),
+        None => {
+            cx.editor
+                .set_error("Can't set breakpoint: document has no path");
+            return;
+        }
+    };
+    let text = doc.text().slice(..);
+    let primary_selection = doc.selection(view.id).primary();
+    let line = primary_selection.cursor_line(text);
+    let cursor_utf16_cu = text.char_to_utf16_cu(primary_selection.cursor(text));
+    let line_start_utf16_cu = text.char_to_utf16_cu(text.line_to_char(line));
+    dap_toggle_breakpoint_impl(cx, path, line, Some(cursor_utf16_cu - line_start_utf16_cu));
+}
+
+pub fn dap_toggle_breakpoint_impl(
+    cx: &mut Context,
+    path: PathBuf,
+    line: usize,
+    column: Option<usize>,
+) {
     // TODO: need to map breakpoints over edits and update them?
     // we shouldn't really allow editing while debug is running though
 
@@ -409,12 +432,13 @@ pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: PathBuf, line: usize) 
     // TODO: always keep breakpoints sorted and use binary search to determine insertion point
     if let Some(pos) = breakpoints
         .iter()
-        .position(|breakpoint| breakpoint.line == line)
+        .position(|breakpoint| breakpoint.line == line && breakpoint.column == column)
     {
         breakpoints.remove(pos);
     } else {
         breakpoints.push(Breakpoint {
             line,
+            column,
             ..Default::default()
         });
     }

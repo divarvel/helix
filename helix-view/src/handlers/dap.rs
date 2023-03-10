@@ -114,6 +114,7 @@ pub fn breakpoints_changed(
         .iter()
         .map(|breakpoint| helix_dap::SourceBreakpoint {
             line: breakpoint.line + 1, // convert from 0-indexing to 1-indexing (TODO: could set debugger to 0-indexing on init)
+            column: breakpoint.column.map(|c| c + 1), // convert from 0-indexing to 1-indexing
             ..Default::default()
         })
         .collect::<Vec<_>>();
