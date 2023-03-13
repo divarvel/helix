@@ -436,6 +436,7 @@ impl MappableCommand {
         dap_launch, "Launch debug target",
         dap_restart, "Restart debugging session",
         dap_toggle_breakpoint, "Toggle breakpoint",
+        dap_toggle_inline_breakpoint, "Toggle inline breakpoint",
         dap_continue, "Continue program execution",
         dap_pause, "Pause program execution",
         dap_step_in, "Step in",

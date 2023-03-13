@@ -399,9 +399,22 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
         }
     };
     let dap_pos = pos_to_dap_pos(doc.text(), doc.selection(view.id).primary().head);
-    dap_toggle_breakpoint_impl(cx, path, dap_pos.line, Some(dap_pos.column));
+    dap_toggle_breakpoint_impl(cx, path, dap_pos.line, None);
 }
 
+pub fn dap_toggle_inline_breakpoint(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let path = match doc.path() {
+        Some(path) => path.clone(),
+        None => {
+            cx.editor
+                .set_error("Can't set breakpoint: document has no path");
+            return;
+        }
+    };
+    let dap_pos = pos_to_dap_pos(doc.text(), doc.selection(view.id).primary().head);
+    dap_toggle_breakpoint_impl(cx, path, dap_pos.line, Some(dap_pos.column));
+}
 pub fn dap_toggle_breakpoint_impl(
     cx: &mut Context,
     path: PathBuf,
@@ -413,10 +426,10 @@ pub fn dap_toggle_breakpoint_impl(
 
     let breakpoints = cx.editor.breakpoints.entry(path.clone()).or_default();
     // TODO: always keep breakpoints sorted and use binary search to determine insertion point
-    if let Some(pos) = breakpoints
-        .iter()
-        .position(|breakpoint| breakpoint.line == line && breakpoint.column == column)
-    {
+    if let Some(pos) = breakpoints.iter().position(|breakpoint| {
+        // toggling a breakpoint on a whole line removes all inline breakpoints
+        breakpoint.line == line && (column.is_none() || breakpoint.column == column)
+    }) {
         breakpoints.remove(pos);
     } else {
         breakpoints.push(Breakpoint {

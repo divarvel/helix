@@ -225,6 +225,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
                 "l" => dap_launch,
                 "r" => dap_restart,
                 "b" => dap_toggle_breakpoint,
+                "B" => dap_toggle_inline_breakpoint,
                 "c" => dap_continue,
                 "h" => dap_pause,
                 "i" => dap_step_in,
